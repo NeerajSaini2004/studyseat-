@@ -1,0 +1,16 @@
+node_modules/
+
+.env
+.env.*
+!.env.example
+
+*.db
+*.sqlite
+*.sqlite3
+
+uploads/
+logs/
+
+/inspect_users.js
+/backend/inspect_users.js
+/backend/inspect_roles.js
