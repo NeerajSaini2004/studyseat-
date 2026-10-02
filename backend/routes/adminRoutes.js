@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStats, verifyLibrary, toggleBlockUser } from '../controllers/adminController.js';
+import { getStats, getLibraries, getUsers, verifyLibrary, toggleBlockUser } from '../controllers/adminController.js';
 import { authenticateToken, authorizeRoles } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -8,6 +8,8 @@ const router = express.Router();
 router.use(authenticateToken, authorizeRoles('admin'));
 
 router.get('/stats', getStats);
+router.get('/libraries', getLibraries);
+router.get('/users', getUsers);
 router.patch('/libraries/:libraryId/verify', verifyLibrary);
 router.patch('/users/:userId/block', toggleBlockUser);
 

@@ -21,6 +21,61 @@ export const getStats = async (req, res, next) => {
   }
 };
 
+const getPageOptions = (query) => {
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 25));
+  return { page, limit, skip: (page - 1) * limit };
+};
+
+export const getLibraries = async (req, res, next) => {
+  try {
+    const { page, limit, skip } = getPageOptions(req.query);
+    const [libraries, total] = await Promise.all([
+      Library.find({})
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Library.countDocuments({})
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      results: libraries.length,
+      data: {
+        libraries,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUsers = async (req, res, next) => {
+  try {
+    const { page, limit, skip } = getPageOptions(req.query);
+    const [users, total] = await Promise.all([
+      User.find({})
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments({})
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      results: users.length,
+      data: {
+        users,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const verifyLibrary = async (req, res, next) => {
   try {
     const { libraryId } = req.params;
@@ -68,18 +123,24 @@ export const toggleBlockUser = async (req, res, next) => {
       });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { isBlocked },
-      { new: true }
-    ).select('-password');
+    const targetUser = await User.findById(userId).select('-password');
 
-    if (!user) {
+    if (!targetUser) {
       return res.status(404).json({
         status: 'error',
         message: 'User account not found.'
       });
     }
+
+    if (targetUser.role === 'admin' || targetUser._id.toString() === req.user.id) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Admin accounts cannot be blocked.'
+      });
+    }
+
+    targetUser.isBlocked = isBlocked;
+    const user = await targetUser.save();
 
     res.status(200).json({
       status: 'success',
