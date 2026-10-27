@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const googleBtnContainerRef = useRef(null);
 
   // Initialize Google Identity Services if Client ID exists
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -29,12 +30,26 @@ function Login() {
           client_id: googleClientId,
           callback: handleGoogleCredentialResponse,
         });
+
+        if (googleBtnContainerRef.current) {
+          window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+            theme: 'outline',
+            size: 'large',
+            width: googleBtnContainerRef.current.offsetWidth || 380,
+            text: 'continue_with',
+            shape: 'rectangular',
+          });
+        }
       }
     };
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      try {
+        document.body.removeChild(script);
+      } catch (e) {
+        // ignore if already unmounted
+      }
     };
   }, [googleClientId]);
 
@@ -191,23 +206,15 @@ function Login() {
             </div>
           </div>
 
-          {/* Google Sign In Button */}
-          <button
-            type="button"
-            onClick={handleGoogleButtonClick}
-            disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-semibold text-sm transition-all duration-200 hover:border-white/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed group"
-          >
-            {googleLoading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Connecting Google...
-              </span>
-            ) : (
-              <>
+          {/* Google Sign In Section */}
+          <div className="w-full flex flex-col items-center justify-center">
+            <div ref={googleBtnContainerRef} className="w-full flex justify-center min-h-[44px]"></div>
+            {!googleClientId && (
+              <button
+                type="button"
+                onClick={handleGoogleButtonClick}
+                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-semibold text-sm transition-all duration-200 hover:border-white/30 hover:shadow-lg group"
+              >
                 <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"/>
                   <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.36 7.34 24 12 24z"/>
@@ -215,9 +222,9 @@ function Login() {
                   <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.25 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                 </svg>
                 <span>Continue with Google</span>
-              </>
+              </button>
             )}
-          </button>
+          </div>
 
           {/* Divider */}
           <div className="relative my-6">
