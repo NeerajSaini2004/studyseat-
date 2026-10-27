@@ -48,7 +48,7 @@ function Login() {
       try {
         document.body.removeChild(script);
       } catch (e) {
-        // ignore if already unmounted
+        // ignore unmount cleanup
       }
     };
   }, [googleClientId]);
@@ -74,7 +74,6 @@ function Login() {
   const handleGoogleButtonClick = () => {
     setError('');
     if (!googleClientId) {
-      // Guide developer if client ID not configured yet in .env
       setError('Google Client ID not configured. Add VITE_GOOGLE_CLIENT_ID in frontend/.env to enable live Google popup.');
       return;
     }
@@ -82,7 +81,6 @@ function Login() {
     if (window.google?.accounts?.id) {
       window.google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // If One Tap is skipped or blocked, fall back or notify user
           console.warn('Google prompt was dismissed or not displayed.');
         }
       });
@@ -101,21 +99,6 @@ function Login() {
       navigate('/');
     } else {
       setError(result.message);
-    }
-  };
-
-  // Quick Demo account auto-fill for testing / interview demos
-  const setDemoCredentials = (role) => {
-    setError('');
-    if (role === 'student') {
-      setEmail('student@studyseat.com');
-      setPassword('password123');
-    } else if (role === 'owner') {
-      setEmail('owner@studyseat.com');
-      setPassword('password123');
-    } else if (role === 'admin') {
-      setEmail('admin@studyseat.com');
-      setPassword('password123');
     }
   };
 
@@ -176,66 +159,6 @@ function Login() {
             </p>
           </div>
 
-          {/* Quick Demo Credentials Bar */}
-          <div className="mb-6 p-3 rounded-xl bg-white/5 border border-white/10">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-textMuted uppercase tracking-wider">⚡ Quick Demo Login:</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setDemoCredentials('student')}
-                className="py-1.5 px-2 text-xs font-semibold rounded-lg bg-white/5 hover:bg-primary/20 hover:text-primary hover:border-primary/40 border border-white/10 transition-all text-center"
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoCredentials('owner')}
-                className="py-1.5 px-2 text-xs font-semibold rounded-lg bg-white/5 hover:bg-secondary/20 hover:text-secondary hover:border-secondary/40 border border-white/10 transition-all text-center"
-              >
-                Owner
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoCredentials('admin')}
-                className="py-1.5 px-2 text-xs font-semibold rounded-lg bg-white/5 hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-400/40 border border-white/10 transition-all text-center"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-
-          {/* Google Sign In Section */}
-          <div className="w-full flex flex-col items-center justify-center">
-            <div ref={googleBtnContainerRef} className="w-full flex justify-center min-h-[44px]"></div>
-            {!googleClientId && (
-              <button
-                type="button"
-                onClick={handleGoogleButtonClick}
-                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-semibold text-sm transition-all duration-200 hover:border-white/30 hover:shadow-lg group"
-              >
-                <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"/>
-                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.36 7.34 24 12 24z"/>
-                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.25 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/10"></div>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-darkBg px-3 text-textMuted tracking-wider font-semibold">Or continue with email</span>
-            </div>
-          </div>
-
           {error && (
             <div className="bg-error/10 border border-error/20 text-error p-4 rounded-xl text-sm mb-6 flex items-start gap-3 animate-shake">
               <span className="text-lg leading-none">⚠️</span>
@@ -243,6 +166,7 @@ function Login() {
             </div>
           )}
 
+          {/* Email/Password Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2 ml-1">
@@ -283,12 +207,10 @@ function Login() {
                   aria-label="Toggle password visibility"
                 >
                   {showPassword ? (
-                    /* Eye-off icon */
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
                     </svg>
                   ) : (
-                    /* Eye icon */
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -316,6 +238,37 @@ function Login() {
               )}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-darkBg px-3 text-textMuted tracking-wider font-semibold">Or continue with</span>
+            </div>
+          </div>
+
+          {/* Google Sign In Section (Down Side) */}
+          <div className="w-full flex flex-col items-center justify-center">
+            <div ref={googleBtnContainerRef} className="w-full flex justify-center min-h-[44px]"></div>
+            {!googleClientId && (
+              <button
+                type="button"
+                onClick={handleGoogleButtonClick}
+                disabled={googleLoading}
+                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-semibold text-sm transition-all duration-200 hover:border-white/30 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.36 7.34 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.25 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+            )}
+          </div>
 
           <p className="text-center text-sm text-textMuted mt-8 font-medium">
             Don't have an account?{' '}
