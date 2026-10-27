@@ -21,9 +21,21 @@ const userSchema = new mongoose.Schema(
       ],
       index: true,
     },
-    password: { // Hashed password storage
+    password: { // Hashed password storage (optional for OAuth users)
       type: String,
-      required: [true, 'Password is required'],
+      required: function () {
+        return !this.googleId;
+      },
+    },
+    googleId: {
+      type: String,
+      default: null,
+      sparse: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
     },
     role: {
       type: String,

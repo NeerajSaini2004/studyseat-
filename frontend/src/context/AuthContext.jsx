@@ -86,6 +86,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (idToken, role = 'student') => {
+    try {
+      const response = await axios.post('/auth/google', { idToken, role });
+      if (response.data.status === 'success') {
+        const { token: receivedToken, user: receivedUser } = response.data.data;
+        localStorage.setItem('token', receivedToken);
+        setToken(receivedToken);
+        setUser(receivedUser);
+        return { success: true };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Google sign in failed. Please try again.'
+      };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
@@ -93,7 +111,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

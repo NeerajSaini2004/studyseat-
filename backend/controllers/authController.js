@@ -1,4 +1,4 @@
-import { registerUser, loginUser } from '../services/authService.js';
+import { registerUser, loginUser, googleLoginUser } from '../services/authService.js';
 import User from '../models/User.js';
 
 export const register = async (req, res, next) => {
@@ -22,6 +22,20 @@ export const login = async (req, res, next) => {
     res.status(200).json({
       status: 'success',
       message: 'Login successful',
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const googleLogin = async (req, res, next) => {
+  try {
+    const { idToken, role } = req.body;
+    const data = await googleLoginUser({ idToken, role });
+    res.status(200).json({
+      status: 'success',
+      message: 'Google login successful',
       data,
     });
   } catch (error) {
