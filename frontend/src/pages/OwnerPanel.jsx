@@ -244,15 +244,14 @@ function OwnerPanel() {
     });
 
     try {
-      const res = await axios.post(`/libraries/${library._id}/photos`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const res = await axios.post(`/libraries/${library._id}/photos`, formData);
       if (res.data.status === 'success') {
         toast.success('Photos uploaded successfully!');
         setLibrary(prev => ({ ...prev, images: res.data.data.images }));
         handleClearSelectedPhotos();
       }
     } catch (err) {
+      console.error('Photo upload error:', err.response?.data || err.message);
       toast.error(err.response?.data?.message || 'Failed to upload photos.');
     } finally {
       setUploadingPhotos(false);

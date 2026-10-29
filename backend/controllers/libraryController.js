@@ -209,7 +209,12 @@ export const updateSeat = async (req, res, next) => {
 
 export const uploadPhotos = async (req, res, next) => {
   try {
-    const library = await Library.findOne({ _id: req.params.id, ownerId: req.user.id });
+    const userId = req.user.id || req.user._id;
+    const filter = req.user.role === 'admin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, ownerId: userId };
+
+    const library = await Library.findOne(filter);
     if (!library) {
       return res.status(404).json({ status: 'error', message: 'Library not found or not owned by you.' });
     }
