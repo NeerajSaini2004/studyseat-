@@ -13,12 +13,7 @@ const formatAddress = (addr) => {
   return addr;
 };
 
-const getImageUrl = (img) => {
-  if (!img) return '';
-  if (img.startsWith('http://') || img.startsWith('https://')) return img;
-  const baseUrl = (axios.defaults.baseURL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-  return `${baseUrl}${img.startsWith('/') ? img : `/${img}`}`;
-};
+import { getImageUrl, FALLBACK_LIBRARY_IMAGE } from '../utils/imageUrl';
 
 // ─── Stars display component ──────────────────────────────────────────────────
 const Stars = ({ rating = 0, max = 5 }) => (
@@ -409,9 +404,13 @@ function StudentDashboard() {
                         {/* Image */}
                         <div className="w-full sm:w-32 h-32 rounded-xl overflow-hidden flex-shrink-0 bg-zinc-800 relative">
                           <img 
-                            src={`https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=300&q=80`} 
+                            src={lib.images && lib.images.length > 0 ? getImageUrl(lib.images[0]) : FALLBACK_LIBRARY_IMAGE} 
                             alt={lib.name}
                             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = FALLBACK_LIBRARY_IMAGE;
+                            }}
                           />
                           {((lib.availableSeats ?? 0) > 0) && (
                             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md text-[9px] font-bold text-success border border-success/30">
@@ -480,6 +479,10 @@ function StudentDashboard() {
                                 src={getImageUrl(img)} 
                                 alt={`${selectedLibrary.name} - Photo ${idx + 1}`} 
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = FALLBACK_LIBRARY_IMAGE;
+                                }}
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                                 <span className="text-white text-xs font-bold shadow-sm">Photo {idx + 1}</span>

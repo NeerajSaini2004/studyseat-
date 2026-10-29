@@ -7,12 +7,7 @@ import toast from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const getImageUrl = (img) => {
-  if (!img) return '';
-  if (img.startsWith('http://') || img.startsWith('https://')) return img;
-  const baseUrl = (axios.defaults.baseURL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
-  return `${baseUrl}${img.startsWith('/') ? img : `/${img}`}`;
-};
+import { getImageUrl, FALLBACK_LIBRARY_IMAGE } from '../utils/imageUrl';
 
 const formatAddress = (addr) => {
   if (!addr) return '';
@@ -877,7 +872,15 @@ function OwnerPanel() {
                         <div className="grid grid-cols-3 gap-2 mb-4">
                           {library.images.map((img, idx) => (
                             <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-white/10 relative group">
-                              <img src={getImageUrl(img)} alt={`Library ${idx+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                              <img 
+                                src={getImageUrl(img)} 
+                                alt={`Library ${idx+1}`} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = FALLBACK_LIBRARY_IMAGE;
+                                }}
+                              />
                               <div className="absolute top-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-medium">
                                 #{idx + 1}
                               </div>
