@@ -58,6 +58,104 @@ function StudentDashboard() {
   const [reviews, setReviews] = useState([]);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
+  const [locatingNearMe, setLocatingNearMe] = useState(false);
+
+  const handleFindSeatsNearMe = () => {
+    // 1. Immediately toggle on 'Seats Available Now'
+    setFilterAvailable(true);
+
+    // 2. Scroll towards libraries / search
+    const scrollTarget = document.getElementById('search-filters') || document.getElementById('library-list');
+    if (scrollTarget) {
+      scrollTarget.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 3. Geolocation search if supported
+    if ('geolocation' in navigator) {
+      setLocatingNearMe(true);
+      const toastId = toast.loading('Detecting your location...');
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+              { signal: controller.signal }
+            );
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+              const data = await res.json();
+              const addr = data.address || {};
+              const detectedCity = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district;
+              if (detectedCity) {
+                setCityFilter(detectedCity);
+                toast.success(`Found study spaces in ${detectedCity} with open seats!`, { id: toastId });
+                return;
+              }
+            }
+          } catch (e) {
+            console.log('Location reverse geocode error or timeout:', e);
+          } finally {
+            setLocatingNearMe(false);
+          }
+
+          if (user?.city) {
+            setCityFilter(user.city);
+            toast.success(`Showing available seats near ${user.city}!`, { id: toastId });
+          } else {
+            toast.success('Showing all libraries with available seats!', { id: toastId });
+          }
+        },
+        (error) => {
+          setLocatingNearMe(false);
+          console.warn('Geolocation error:', error);
+          if (user?.city) {
+            setCityFilter(user.city);
+            toast.success(`Showing available seats near ${user.city}!`, { id: toastId });
+          } else {
+            toast.success('Showing all libraries with available seats!', { id: toastId });
+          }
+        },
+        { timeout: 8000, enableHighAccuracy: false }
+      );
+    } else {
+      if (user?.city) {
+        setCityFilter(user.city);
+        toast.success(`Showing available seats near ${user.city}!`);
+      } else {
+        toast.success('Showing all libraries with available seats!');
+      }
+    }
+  };
+
+  const handleExploreLibraries = () => {
+    setCityFilter('');
+    setMaxPrice('');
+    setFilterWifi(false);
+    setFilterAC(false);
+    setFilterParking(false);
+    setFilterCharging(false);
+    setFilterAvailable(false);
+    
+    toast.success('Exploring all libraries');
+    const target = document.getElementById('library-list') || document.getElementById('search-filters');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleSearch = () => {
+    buildFacilityQuery();
+    const target = document.getElementById('library-list') || document.getElementById('search-filters');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     buildFacilityQuery();
@@ -295,20 +393,35 @@ function StudentDashboard() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   <button 
-                    onClick={() => document.getElementById('search-filters').scrollIntoView({ behavior: 'smooth' })}
-                    className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-sm hover:shadow-glow hover:scale-105 transition-all duration-300"
+                    onClick={handleFindSeatsNearMe}
+                    disabled={locatingNearMe}
+                    className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-primary to-purple-600 text-white font-bold text-sm hover:shadow-glow hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
                   >
-                    Find Seats Near Me
+                    {locatingNearMe ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Locating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>📍</span>
+                        <span>Find Seats Near Me</span>
+                      </>
+                    )}
                   </button>
-                  <button className="px-8 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm hover:bg-white/10 transition-all duration-300">
-                    Explore Libraries
+                  <button 
+                    onClick={handleExploreLibraries}
+                    className="px-8 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm hover:bg-white/10 hover:border-white/20 active:scale-95 transition-all duration-300 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span>🧭</span>
+                    <span>Explore Libraries</span>
                   </button>
                 </div>
               </div>
             </div>
 
             {/* ── Advanced Filter Bar ──────────────────────────── */}
-            <div id="search-filters" className="mb-14">
+            <div id="search-filters" className="mb-14 scroll-mt-24">
               {/* Pill-shaped Search Bar (Airbnb Style) */}
               <div className="bg-darkSurface/90 backdrop-blur-xl border border-white/10 rounded-3xl p-3 sm:rounded-full sm:p-2 mb-8 shadow-[0_8px_30px_rgb(0,0,0,0.4)] max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-0">
                 
@@ -320,6 +433,7 @@ function StudentDashboard() {
                     className="w-full bg-transparent border-none text-sm text-white focus:outline-none focus:ring-0 placeholder-white/30 font-medium"
                     value={cityFilter}
                     onChange={(e) => setCityFilter(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                   />
                 </div>
 
@@ -331,11 +445,16 @@ function StudentDashboard() {
                     className="w-full bg-transparent border-none text-sm text-white focus:outline-none focus:ring-0 placeholder-white/30 font-medium"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                   />
                 </div>
 
                 <div className="w-full sm:w-auto p-1 pl-4 sm:pl-2">
-                  <button className="w-full sm:w-auto bg-gradient-to-r from-primary to-indigo-500 text-white rounded-2xl sm:rounded-full px-8 py-4 font-bold text-sm hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2">
+                  <button 
+                    onClick={handleSearch}
+                    type="button"
+                    className="w-full sm:w-auto bg-gradient-to-r from-primary to-indigo-500 text-white rounded-2xl sm:rounded-full px-8 py-4 font-bold text-sm hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                  >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -374,7 +493,7 @@ function StudentDashboard() {
             </div>
 
             {/* ── Split View ────────────────────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div id="library-list" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start scroll-mt-24">
 
               {/* Library List */}
               <div className="lg:col-span-5 space-y-4">

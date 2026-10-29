@@ -115,15 +115,45 @@ export const listLibraries = async (req, res, next) => {
       };
     }
 
-    // 2. City filter
+    // 2. City / Name / Address search
     if (city) {
-      query.city = { $regex: new RegExp(city, 'i') };
+      const escaped = city.trim().replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      const searchRegex = new RegExp(escaped, 'i');
+      query.$or = [
+        { city: searchRegex },
+        { name: searchRegex },
+        { address: searchRegex }
+      ];
     }
 
-    // 3. Facilities filter (all listed tags must match)
+    // 3. Facilities filter (flexible case-insensitive regex matching for each tag)
     if (facilities) {
-      const facilityList = facilities.split(',').map(f => f.trim());
-      query.facilities = { $all: facilityList };
+      const facilityList = facilities.split(',').map(f => f.trim()).filter(Boolean);
+      if (facilityList.length > 0) {
+        const facilityConditions = facilityList.map(tag => {
+          let pattern;
+          if (/wifi/i.test(tag)) {
+            pattern = 'wi-?fi';
+          } else if (/^ac$/i.test(tag) || /air\s*condition/i.test(tag)) {
+            pattern = 'ac|air\\s*condition';
+          } else if (/parking/i.test(tag)) {
+            pattern = 'parking';
+          } else if (/charg|power|socket|outlet/i.test(tag)) {
+            pattern = 'charg|power|outlet|socket';
+          } else {
+            pattern = tag.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+          }
+
+          return { facilities: { $regex: pattern, $options: 'i' } };
+        });
+
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, ...facilityConditions];
+          delete query.$or;
+        } else {
+          query.$and = facilityConditions;
+        }
+      }
     }
 
     // 4. Price rate filter (fees)
