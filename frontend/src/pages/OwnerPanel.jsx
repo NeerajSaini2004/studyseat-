@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,13 @@ import toast from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const getImageUrl = (img) => {
+  if (!img) return '';
+  if (img.startsWith('http://') || img.startsWith('https://')) return img;
+  const baseUrl = (axios.defaults.baseURL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+  return `${baseUrl}${img.startsWith('/') ? img : `/${img}`}`;
+};
+
 const formatAddress = (addr) => {
   if (!addr) return '';
   if (typeof addr === 'object') return [addr.street, addr.city, addr.state].filter(Boolean).join(', ');
@@ -62,6 +69,7 @@ function OwnerPanel() {
   // Photo upload state
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchOwnerData();
@@ -193,18 +201,40 @@ function OwnerPanel() {
   };
 
   const handlePhotoChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length < 3 || files.length > 5) {
-      toast.error('Please select between 3 and 5 photos.');
+    const files = Array.from(e.target.files || []);
+    if (files.length > 5) {
+      toast.error('You can select a maximum of 5 photos.');
+      setSelectedPhotos(files.slice(0, 5));
       return;
     }
     setSelectedPhotos(files);
   };
 
+  const handleRemoveSelectedPhoto = (indexToRemove) => {
+    setSelectedPhotos(prev => {
+      const updated = prev.filter((_, idx) => idx !== indexToRemove);
+      if (updated.length === 0 && fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return updated;
+    });
+  };
+
+  const handleClearSelectedPhotos = () => {
+    setSelectedPhotos([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handlePhotoUpload = async (e) => {
     e.preventDefault();
-    if (selectedPhotos.length < 3 || selectedPhotos.length > 5) {
-      toast.error('Please select between 3 and 5 photos.');
+    if (selectedPhotos.length === 0) {
+      toast.error('Please select at least 1 photo.');
+      return;
+    }
+    if (selectedPhotos.length > 5) {
+      toast.error('Maximum 5 photos allowed.');
       return;
     }
     setUploadingPhotos(true);
@@ -220,7 +250,7 @@ function OwnerPanel() {
       if (res.data.status === 'success') {
         toast.success('Photos uploaded successfully!');
         setLibrary(prev => ({ ...prev, images: res.data.data.images }));
-        setSelectedPhotos([]);
+        handleClearSelectedPhotos();
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to upload photos.');
@@ -838,39 +868,93 @@ function OwnerPanel() {
                 <div>
                   <h2 className="text-lg font-bold mb-6">Library Photos</h2>
                   <div className="glass-card p-6 rounded-2xl space-y-4">
-                    <p className="text-sm text-textMuted">Upload 3 to 5 photos to showcase your library to students.</p>
+                    <p className="text-sm text-textMuted">Upload 1 to 5 photos to showcase your library (3 to 5 recommended).</p>
                     
                     {library.images && library.images.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mb-4">
-                        {library.images.map((img, idx) => (
-                          <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-white/10">
-                            <img src={img.startsWith('/') ? `http://localhost:5000${img}` : img} alt={`Library ${idx+1}`} className="w-full h-full object-cover" />
-                          </div>
-                        ))}
+                      <div>
+                        <span className="text-xs font-semibold text-textMuted uppercase tracking-wider block mb-2">
+                          Uploaded Photos ({library.images.length})
+                        </span>
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                          {library.images.map((img, idx) => (
+                            <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-white/10 relative group">
+                              <img src={getImageUrl(img)} alt={`Library ${idx+1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                              <div className="absolute top-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white font-medium">
+                                #{idx + 1}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
                     <form onSubmit={handlePhotoUpload} className="space-y-4">
                       <div>
+                        <label className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-2">
+                          Select Photos (1 to 5)
+                        </label>
                         <input 
+                          ref={fileInputRef}
                           type="file" 
                           accept="image/jpeg, image/png, image/webp" 
                           multiple 
                           onChange={handlePhotoChange}
                           className="block w-full text-sm text-textMuted file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 transition-all cursor-pointer"
                         />
-                        {selectedPhotos.length > 0 && (
-                          <p className="text-xs text-warning mt-2">
-                            {selectedPhotos.length} file(s) selected. 
-                            {selectedPhotos.length < 3 ? ' (Need at least 3)' : selectedPhotos.length > 5 ? ' (Maximum 5 allowed)' : ' (Valid)'}
-                          </p>
-                        )}
                       </div>
+
+                      {/* Preview Selected Photos Before Upload */}
+                      {selectedPhotos.length > 0 && (
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-white">
+                              Selected for Upload ({selectedPhotos.length}/5)
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleClearSelectedPhotos}
+                              className="text-xs text-error hover:underline cursor-pointer"
+                            >
+                              Clear selection
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {selectedPhotos.map((file, idx) => {
+                              const previewUrl = URL.createObjectURL(file);
+                              return (
+                                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-primary/40 group">
+                                  <img 
+                                    src={previewUrl} 
+                                    alt={`Preview ${idx + 1}`} 
+                                    className="w-full h-full object-cover"
+                                    onLoad={() => URL.revokeObjectURL(previewUrl)}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSelectedPhoto(idx)}
+                                    title="Remove this photo"
+                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-error text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <p className={`text-xs ${selectedPhotos.length < 3 ? 'text-warning' : 'text-success'}`}>
+                            {selectedPhotos.length} photo(s) selected. 
+                            {selectedPhotos.length < 3 ? ' (Tip: 3 to 5 photos give students the best view)' : ' (Ready to upload)'}
+                          </p>
+                        </div>
+                      )}
+
                       <button 
                         type="submit" 
-                        disabled={uploadingPhotos || selectedPhotos.length < 3 || selectedPhotos.length > 5}
-                        className="w-full py-2.5 rounded-xl bg-white/10 text-white font-bold text-sm hover:bg-white/20 transition-all duration-300 disabled:opacity-50 cursor-pointer border border-white/5 hover:border-white/20">
-                        {uploadingPhotos ? 'Uploading...' : 'Upload Photos'}
+                        disabled={uploadingPhotos || selectedPhotos.length === 0 || selectedPhotos.length > 5}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary to-indigo-500 text-white font-bold text-sm hover:shadow-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border border-white/5">
+                        {uploadingPhotos ? 'Uploading...' : `Upload ${selectedPhotos.length > 0 ? `${selectedPhotos.length} ` : ''}Photo${selectedPhotos.length === 1 ? '' : 's'}`}
                       </button>
                     </form>
                   </div>

@@ -13,6 +13,13 @@ const formatAddress = (addr) => {
   return addr;
 };
 
+const getImageUrl = (img) => {
+  if (!img) return '';
+  if (img.startsWith('http://') || img.startsWith('https://')) return img;
+  const baseUrl = (axios.defaults.baseURL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+  return `${baseUrl}${img.startsWith('/') ? img : `/${img}`}`;
+};
+
 // ─── Stars display component ──────────────────────────────────────────────────
 const Stars = ({ rating = 0, max = 5 }) => (
   <span className="text-yellow-400 text-sm">
@@ -470,7 +477,7 @@ function StudentDashboard() {
                           {selectedLibrary.images.map((img, idx) => (
                             <div key={idx} className="flex-none w-64 h-40 rounded-xl overflow-hidden snap-center border border-white/10 relative group">
                               <img 
-                                src={img.startsWith('/') ? `http://localhost:5000${img}` : img} 
+                                src={getImageUrl(img)} 
                                 alt={`${selectedLibrary.name} - Photo ${idx + 1}`} 
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                               />
